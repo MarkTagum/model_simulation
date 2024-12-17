@@ -2,36 +2,30 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score
 
 # Streamlit App
-st.title("Traffic Light Control Simulation")
+st.title("Movie Rating Prediction")
 
 # Sidebar for Configuration
 st.sidebar.header("Configuration")
 
-# Step 1: Feature and Class Configuration
-st.sidebar.subheader("Step 1: Feature and Class Configuration")
+# Step 1: Feature and Target Configuration
+st.sidebar.subheader("Step 1: Feature and Target Configuration")
 
-# Feature Names
-feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated)", "Lane1_Vehicles,Lane2_Vehicles,Time_of_Day,Weather")
-feature_names = [name.strip() for name in feature_names.split(",")]
+# Pre-defined Feature and Target Options
+feature_options = ["Budget", "Runtime", "Genre", "Release_Year"]
+target_options = ["Rating"]
 
-# Class Names
-class_names = st.sidebar.text_input("Enter Class Names (comma-separated)", "Green_Lane1,Green_Lane2")
-class_names = [name.strip() for name in class_names.split(",")]
+# Select Features
+selected_features = st.sidebar.multiselect("Select Features", feature_options, default=feature_options)
 
-# Step 2: Class-Specific Settings
-st.sidebar.subheader("Step 2: Class-Specific Settings")
+# Select Target
+selected_target = st.sidebar.selectbox("Select Target", target_options)
 
-# Class-Specific Rules
-st.sidebar.write("Define rules for class assignment:")
-lane1_threshold = st.sidebar.slider("Lane1_Vehicles Threshold for Green_Lane1", 0, 100, 25)
-lane2_threshold = st.sidebar.slider("Lane2_Vehicles Threshold for Green_Lane2", 0, 100, 25)
-
-# Step 3: Sample Size and Train/Test Split
-st.sidebar.subheader("Step 3: Sample Size and Train/Test Split")
+# Step 2: Sample Size and Train/Test Split
+st.sidebar.subheader("Step 2: Sample Size and Train/Test Split")
 
 # Sample Size
 sample_size = st.sidebar.number_input("Sample Size", min_value=10, max_value=10000, value=1000)
@@ -47,29 +41,26 @@ if st.sidebar.button("Generate Synthetic Data"):
     np.random.seed(42)
 
     # Features
-    Lane1_Vehicles = np.random.randint(0, 50, sample_size)
-    Lane2_Vehicles = np.random.randint(0, 50, sample_size)
-    Time_of_Day = np.random.choice(['Morning', 'Afternoon', 'Evening'], sample_size)
-    Weather = np.random.choice(['Sunny', 'Rainy', 'Cloudy'], sample_size)
+    Budget = np.random.randint(100000, 100000000, sample_size)  # Movie budget in USD
+    Runtime = np.random.randint(60, 200, sample_size)  # Movie runtime in minutes
+    Genre = np.random.choice(['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'], sample_size)  # Movie genre
+    Release_Year = np.random.randint(1980, 2023, sample_size)  # Release year
 
-    # Target: Traffic Light State
-    Traffic_Light_State = []
-    for i in range(sample_size):
-        if Lane1_Vehicles[i] > lane1_threshold:
-            Traffic_Light_State.append(class_names[0])  # Green_Lane1
-        elif Lane2_Vehicles[i] > lane2_threshold:
-            Traffic_Light_State.append(class_names[1])  # Green_Lane2
-        else:
-            Traffic_Light_State.append(np.random.choice(class_names))  # Random assignment
+    # Target: Movie Rating (1 to 10)
+    Rating = 5 + 0.0001 * Budget + 0.01 * Runtime + np.random.normal(0, 1, sample_size)
+    Rating = np.clip(Rating, 1, 10)  # Ensure ratings are between 1 and 10
 
     # Create DataFrame
     data = pd.DataFrame({
-        feature_names[0]: Lane1_Vehicles,
-        feature_names[1]: Lane2_Vehicles,
-        feature_names[2]: Time_of_Day,
-        feature_names[3]: Weather,
-        "Traffic_Light_State": Traffic_Light_State
+        "Budget": Budget,
+        "Runtime": Runtime,
+        "Genre": Genre,
+        "Release_Year": Release_Year,
+        "Rating": Rating
     })
+
+    # Filter data based on selected features and target
+    data = data[selected_features + [selected_target]]
 
     # Save to session state
     st.session_state.data = data
@@ -81,17 +72,17 @@ if "data_generated" in st.session_state and st.session_state.data_generated:
     st.write(st.session_state.data.head())
 
     # Train/Test Split
-    X = st.session_state.data[feature_names]
-    y = st.session_state.data["Traffic_Light_State"]
+    X = st.session_state.data[selected_features]
+    y = st.session_state.data[selected_target]
 
     # Encode categorical variables
-    X = pd.get_dummies(X, columns=[feature_names[2], feature_names[3]], drop_first=True)
+    X = pd.get_dummies(X, columns=["Genre"] if "Genre" in selected_features else [], drop_first=True)
 
     # Split the data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
-    # Train a Decision Tree Model
-    model = DecisionTreeClassifier()
+    # Train a Random Forest Regressor Model
+    model = RandomForestRegressor(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
 
     # Predict on Test Set
@@ -99,25 +90,27 @@ if "data_generated" in st.session_state and st.session_state.data_generated:
 
     # Evaluate the Model
     st.header("Model Evaluation")
-    st.write(f"Accuracy: {accuracy_score(y_test, y_pred):.2f}")
-    st.write("Classification Report:")
-    st.text(classification_report(y_test, y_pred))
+    st.write(f"Mean Squared Error (MSE): {mean_squared_error(y_test, y_pred):.2f}")
+    st.write(f"R-squared (R²): {r2_score(y_test, y_pred):.2f}")
 
     # Simulate New Data
     st.header("Simulation")
     new_data = pd.DataFrame({
-        feature_names[0]: np.random.randint(0, 50, 100),
-        feature_names[1]: np.random.randint(0, 50, 100),
-        feature_names[2]: np.random.choice(['Morning', 'Afternoon', 'Evening'], 100),
-        feature_names[3]: np.random.choice(['Sunny', 'Rainy', 'Cloudy'], 100)
+        "Budget": np.random.randint(100000, 100000000, 100),
+        "Runtime": np.random.randint(60, 200, 100),
+        "Genre": np.random.choice(['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'], 100),
+        "Release_Year": np.random.randint(1980, 2023, 100)
     })
 
+    # Filter new data based on selected features
+    new_data = new_data[selected_features]
+
     # Encode categorical variables
-    new_data = pd.get_dummies(new_data, columns=[feature_names[2], feature_names[3]], drop_first=True)
+    new_data = pd.get_dummies(new_data, columns=["Genre"] if "Genre" in selected_features else [], drop_first=True)
 
-    # Predict Traffic Light States
+    # Predict Movie Ratings
     new_predictions = model.predict(new_data)
-    new_data["Traffic_Light_State"] = new_predictions
+    new_data[selected_target] = new_predictions
 
-    st.write("Simulated Traffic Light States:")
+    st.write("Simulated Movie Ratings:")
     st.write(new_data.head())
