@@ -1,4 +1,2 @@
 streamlit
-sklearn.model_selection
-sklearn.tree
-sklearn.metrics
+sklearn
