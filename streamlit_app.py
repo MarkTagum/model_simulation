@@ -11,27 +11,87 @@ st.title("Movie Rating Prediction")
 # Sidebar for Configuration
 st.sidebar.header("Configuration")
 
-# Step 1: Feature and Target Configuration
-st.sidebar.subheader("Step 1: Feature and Target Configuration")
+# Step 1: Feature and Class Configuration
+st.sidebar.subheader("Step 1: Feature and Class Configuration")
 
-# Pre-defined Feature and Target Options
-feature_options = ["Budget", "Runtime", "Genre", "Release_Year"]
-target_options = ["Rating"]
+# Feature Names
+feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated)", "Budget,Runtime,Genre,Release_Year")
+feature_names = [name.strip() for name in feature_names.split(",")]
 
-# Select Features
-selected_features = st.sidebar.multiselect("Select Features", feature_options, default=feature_options)
+# Target Name
+target_name = st.sidebar.text_input("Enter Target Name", "Rating")
 
-# Select Target
-selected_target = st.sidebar.selectbox("Select Target", target_options)
+# Step 2: Class-Specific Settings
+st.sidebar.subheader("Step 2: Class-Specific Settings")
 
-# Step 2: Sample Size and Train/Test Split
-st.sidebar.subheader("Step 2: Sample Size and Train/Test Split")
+# Define class-specific settings
+class_settings = {
+    "Action": {
+        "Budget_mean": 50000000,
+        "Budget_std": 10000000,
+        "Runtime_mean": 120,
+        "Runtime_std": 15,
+        "Release_Year_mean": 2015,
+        "Release_Year_std": 5,
+        "Rating_mean": 7.5,
+        "Rating_std": 0.5
+    },
+    "Comedy": {
+        "Budget_mean": 20000000,
+        "Budget_std": 5000000,
+        "Runtime_mean": 90,
+        "Runtime_std": 10,
+        "Release_Year_mean": 2018,
+        "Release_Year_std": 3,
+        "Rating_mean": 6.8,
+        "Rating_std": 0.4
+    },
+    "Drama": {
+        "Budget_mean": 30000000,
+        "Budget_std": 8000000,
+        "Runtime_mean": 110,
+        "Runtime_std": 12,
+        "Release_Year_mean": 2016,
+        "Release_Year_std": 4,
+        "Rating_mean": 7.2,
+        "Rating_std": 0.3
+    },
+    "Sci-Fi": {
+        "Budget_mean": 80000000,
+        "Budget_std": 20000000,
+        "Runtime_mean": 130,
+        "Runtime_std": 18,
+        "Release_Year_mean": 2017,
+        "Release_Year_std": 6,
+        "Rating_mean": 7.8,
+        "Rating_std": 0.6
+    },
+    "Horror": {
+        "Budget_mean": 15000000,
+        "Budget_std": 3000000,
+        "Runtime_mean": 95,
+        "Runtime_std": 8,
+        "Release_Year_mean": 2019,
+        "Release_Year_std": 2,
+        "Rating_mean": 5.5,
+        "Rating_std": 0.7
+    }
+}
+
+# Display class-specific settings
+for genre, settings in class_settings.items():
+    st.sidebar.subheader(f"{genre} Settings")
+    for param, value in settings.items():
+        st.sidebar.write(f"{param.replace('_', ' ').title()}: {value}")
+
+# Step 3: Sample Size and Train/Test Split
+st.sidebar.subheader("Step 3: Sample Size and Train/Test Split")
 
 # Sample Size
-sample_size = st.sidebar.number_input("Sample Size", min_value=10, max_value=10000, value=1000)
+sample_size = st.sidebar.number_input("Number of Samples", min_value=10, max_value=50000, value=500)
 
 # Train/Test Split
-test_size = st.sidebar.slider("Test Size (percentage)", 0.1, 0.5, 0.2)
+test_size = st.sidebar.slider("Test Size (percentage)", 0.1, 0.5, 0.3)
 
 # Generate Synthetic Data Button
 if st.sidebar.button("Generate Synthetic Data"):
@@ -40,15 +100,21 @@ if st.sidebar.button("Generate Synthetic Data"):
     # Generate Synthetic Data
     np.random.seed(42)
 
-    # Features
-    Budget = np.random.randint(100000, 100000000, sample_size)  # Movie budget in USD
-    Runtime = np.random.randint(60, 200, sample_size)  # Movie runtime in minutes
-    Genre = np.random.choice(['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'], sample_size)  # Movie genre
-    Release_Year = np.random.randint(1980, 2023, sample_size)  # Release year
+    # Initialize lists for features and target
+    Budget = []
+    Runtime = []
+    Genre = []
+    Release_Year = []
+    Rating = []
 
-    # Target: Movie Rating (1 to 10)
-    Rating = 5 + 0.0001 * Budget + 0.01 * Runtime + np.random.normal(0, 1, sample_size)
-    Rating = np.clip(Rating, 1, 10)  # Ensure ratings are between 1 and 10
+    # Generate data for each genre
+    for genre, settings in class_settings.items():
+        n = int(sample_size / len(class_settings))  # Equal distribution across genres
+        Budget.extend(np.random.normal(settings["Budget_mean"], settings["Budget_std"], n))
+        Runtime.extend(np.random.normal(settings["Runtime_mean"], settings["Runtime_std"], n))
+        Release_Year.extend(np.random.normal(settings["Release_Year_mean"], settings["Release_Year_std"], n))
+        Rating.extend(np.random.normal(settings["Rating_mean"], settings["Rating_std"], n))
+        Genre.extend([genre] * n)
 
     # Create DataFrame
     data = pd.DataFrame({
@@ -58,9 +124,6 @@ if st.sidebar.button("Generate Synthetic Data"):
         "Release_Year": Release_Year,
         "Rating": Rating
     })
-
-    # Filter data based on selected features and target
-    data = data[selected_features + [selected_target]]
 
     # Save to session state
     st.session_state.data = data
@@ -72,11 +135,11 @@ if "data_generated" in st.session_state and st.session_state.data_generated:
     st.write(st.session_state.data.head())
 
     # Train/Test Split
-    X = st.session_state.data[selected_features]
-    y = st.session_state.data[selected_target]
+    X = st.session_state.data[feature_names]
+    y = st.session_state.data[target_name]
 
     # Encode categorical variables
-    X = pd.get_dummies(X, columns=["Genre"] if "Genre" in selected_features else [], drop_first=True)
+    X = pd.get_dummies(X, columns=["Genre"], drop_first=True)
 
     # Split the data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
@@ -102,15 +165,12 @@ if "data_generated" in st.session_state and st.session_state.data_generated:
         "Release_Year": np.random.randint(1980, 2023, 100)
     })
 
-    # Filter new data based on selected features
-    new_data = new_data[selected_features]
-
     # Encode categorical variables
-    new_data = pd.get_dummies(new_data, columns=["Genre"] if "Genre" in selected_features else [], drop_first=True)
+    new_data = pd.get_dummies(new_data, columns=["Genre"], drop_first=True)
 
     # Predict Movie Ratings
     new_predictions = model.predict(new_data)
-    new_data[selected_target] = new_predictions
+    new_data[target_name] = new_predictions
 
     st.write("Simulated Movie Ratings:")
     st.write(new_data.head())
