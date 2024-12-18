@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
 
 # Function to generate synthetic movie data
 def generate_synthetic_movie_data(features, class_settings, sample_size):
@@ -37,59 +37,7 @@ classes = [class_name.strip() for class_name in class_names.split(",")]
 
 # Class-Specific Settings
 st.sidebar.subheader("Class-Specific Settings")
-
-class_settings = {
-    "Action": {
-        "Budget_mean": 50000000,
-        "Budget_std": 10000000,
-        "Runtime_mean": 120,
-        "Runtime_std": 15,
-        "Release_Year_mean": 2015,
-        "Release_Year_std": 5,
-        "Rating_mean": 7.5,
-        "Rating_std": 0.5
-    },
-    "Comedy": {
-        "Budget_mean": 20000000,
-        "Budget_std": 5000000,
-        "Runtime_mean": 90,
-        "Runtime_std": 10,
-        "Release_Year_mean": 2018,
-        "Release_Year_std": 3,
-        "Rating_mean": 6.8,
-        "Rating_std": 0.4
-    },
-    "Drama": {
-        "Budget_mean": 30000000,
-        "Budget_std": 8000000,
-        "Runtime_mean": 110,
-        "Runtime_std": 12,
-        "Release_Year_mean": 2016,
-        "Release_Year_std": 4,
-        "Rating_mean": 7.2,
-        "Rating_std": 0.3
-    },
-    "Sci-Fi": {
-        "Budget_mean": 80000000,
-        "Budget_std": 20000000,
-        "Runtime_mean": 130,
-        "Runtime_std": 18,
-        "Release_Year_mean": 2017,
-        "Release_Year_std": 6,
-        "Rating_mean": 7.8,
-        "Rating_std": 0.6
-    },
-    "Horror": {
-        "Budget_mean": 15000000,
-        "Budget_std": 3000000,
-        "Runtime_mean": 95,
-        "Runtime_std": 8,
-        "Release_Year_mean": 2019,
-        "Release_Year_std": 2,
-        "Rating_mean": 5.5,
-        "Rating_std": 0.7
-    }
-}
+class_settings = {}
 
 for class_name in classes:
     with st.sidebar.expander(f"{class_name} Settings"):
@@ -131,19 +79,18 @@ if 'data' in st.session_state:
     # Train Model Button
     if st.sidebar.button("Train Model"):
         # Train a RandomForestClassifier
-        model = RandomForestRegressor(n_estimators=100, random_state=42)
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
 
         # Predict on test data
         y_pred = model.predict(X_test)
 
         # Evaluate model
-        mse = mean_squared_error(y_test, y_pred)
-        r2 = r2_score(y_test, y_pred)
-
         st.success("Model trained successfully!")
-        st.write(f"Mean Squared Error (MSE): {mse:.2f}")
-        st.write(f"R-squared (R²): {r2:.2f}")
+        st.write("Classification Report:")
+        st.text(classification_report(y_test, y_pred))
+        st.write("Confusion Matrix:")
+        st.write(confusion_matrix(y_test, y_pred))
 
         # Save model to session state
         st.session_state['model'] = model
@@ -176,7 +123,7 @@ if 'model' in st.session_state:
     input_data = input_data[X_train.columns]
 
     # Predict Button
-    if st.button("Predict Rating"):
+    if st.button("Predict Class"):
         model = st.session_state['model']
         prediction = model.predict(input_data)
-        st.success(f"Predicted Movie Rating: {prediction[0]:.2f}")
+        st.success(f"Predicted Movie Class: {prediction[0]}")
