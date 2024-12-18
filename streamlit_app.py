@@ -35,19 +35,19 @@ def generate_synthetic_movie_data(features, sample_size):
 # Streamlit App
 st.title("Movie Rating Prediction")
 
-# Data Generation Parameters
-st.header("Synthetic Data Generation")
+# Sidebar for Data Generation Parameters
+st.sidebar.header("Synthetic Data Generation")
 
 # Feature Configuration
-st.subheader("Feature Configuration")
+st.sidebar.subheader("Feature Configuration")
 features = ['Budget (USD)', 'Runtime (min)', 'Genre', 'Release Year', 'Popularity']
-st.write("Features: ", ", ".join(features))
+st.sidebar.write("Features: ", ", ".join(features))
 
 # Sample Size
-sample_size = st.number_input("Number of samples", min_value=100, max_value=100000, value=500, step=100)
+sample_size = st.sidebar.number_input("Number of samples", min_value=100, max_value=100000, value=500, step=100)
 
 # Generate Data Button
-if st.button("Generate Data"):
+if st.sidebar.button("Generate Data"):
     df = generate_synthetic_movie_data(features, sample_size)
     st.success("Synthetic data generated successfully!")
     st.write(df)
@@ -57,8 +57,8 @@ if st.button("Generate Data"):
 
 # Train/Test Split Configuration
 if 'data' in st.session_state:
-    st.header("Train/Test Split Configuration")
-    test_size = st.slider("Test Size", min_value=0.1, max_value=0.9, value=0.2, step=0.1)
+    st.sidebar.subheader("Train/Test Split Configuration")
+    test_size = st.sidebar.slider("Test Size", min_value=0.1, max_value=0.9, value=0.2, step=0.1)
 
     # Split data
     df = st.session_state['data']
@@ -71,7 +71,7 @@ if 'data' in st.session_state:
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
     # Train Model Button
-    if st.button("Train Model"):
+    if st.sidebar.button("Train Model"):
         # Train a RandomForestRegressor
         model = RandomForestRegressor(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
