@@ -37,7 +37,59 @@ classes = [class_name.strip() for class_name in class_names.split(",")]
 
 # Class-Specific Settings
 st.sidebar.subheader("Class-Specific Settings")
-class_settings = {}
+
+class_settings = {
+    "Action": {
+        "Budget_mean": 50000000,
+        "Budget_std": 10000000,
+        "Runtime_mean": 120,
+        "Runtime_std": 15,
+        "Release_Year_mean": 2015,
+        "Release_Year_std": 5,
+        "Rating_mean": 7.5,
+        "Rating_std": 0.5
+    },
+    "Comedy": {
+        "Budget_mean": 20000000,
+        "Budget_std": 5000000,
+        "Runtime_mean": 90,
+        "Runtime_std": 10,
+        "Release_Year_mean": 2018,
+        "Release_Year_std": 3,
+        "Rating_mean": 6.8,
+        "Rating_std": 0.4
+    },
+    "Drama": {
+        "Budget_mean": 30000000,
+        "Budget_std": 8000000,
+        "Runtime_mean": 110,
+        "Runtime_std": 12,
+        "Release_Year_mean": 2016,
+        "Release_Year_std": 4,
+        "Rating_mean": 7.2,
+        "Rating_std": 0.3
+    },
+    "Sci-Fi": {
+        "Budget_mean": 80000000,
+        "Budget_std": 20000000,
+        "Runtime_mean": 130,
+        "Runtime_std": 18,
+        "Release_Year_mean": 2017,
+        "Release_Year_std": 6,
+        "Rating_mean": 7.8,
+        "Rating_std": 0.6
+    },
+    "Horror": {
+        "Budget_mean": 15000000,
+        "Budget_std": 3000000,
+        "Runtime_mean": 95,
+        "Runtime_std": 8,
+        "Release_Year_mean": 2019,
+        "Release_Year_std": 2,
+        "Rating_mean": 5.5,
+        "Rating_std": 0.7
+    }
+}
 
 for class_name in classes:
     with st.sidebar.expander(f"{class_name} Settings"):
