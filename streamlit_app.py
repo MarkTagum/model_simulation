@@ -11,8 +11,8 @@ st.title("Movie Rating Prediction")
 # Sidebar for Configuration
 st.sidebar.header("Configuration")
 
-# Step 1: Feature and Class Configuration
-st.sidebar.subheader("Step 1: Feature and Class Configuration")
+# Step 1: Feature and Target Configuration
+st.sidebar.subheader("Step 1: Feature and Target Configuration")
 
 # Feature Names
 feature_names = st.sidebar.text_input("Enter Feature Names (comma-separated)", "Budget,Runtime,Genre,Release_Year")
@@ -24,8 +24,8 @@ target_name = st.sidebar.text_input("Enter Target Name", "Rating")
 # Step 2: Class-Specific Settings
 st.sidebar.subheader("Step 2: Class-Specific Settings")
 
-# Define class-specific settings
-class_settings = {
+# Default class-specific settings
+default_class_settings = {
     "Action": {
         "Budget_mean": 50000000,
         "Budget_std": 10000000,
@@ -78,11 +78,21 @@ class_settings = {
     }
 }
 
-# Display class-specific settings
-for genre, settings in class_settings.items():
+# Initialize session state for class settings
+if "class_settings" not in st.session_state:
+    st.session_state.class_settings = default_class_settings
+
+# Function to update class settings
+def update_class_settings(genre, param, value):
+    st.session_state.class_settings[genre][param] = float(value)
+
+# Display class-specific settings with adjustable inputs
+for genre, settings in st.session_state.class_settings.items():
     st.sidebar.subheader(f"{genre} Settings")
-    for param, value in settings.items():
-        st.sidebar.write(f"{param.replace('_', ' ').title()}: {value}")
+    with st.sidebar.expander(f"{genre} Settings", expanded=False):
+        for param, value in settings.items():
+            new_value = st.number_input(f"{param.replace('_', ' ').title()}", value=value, key=f"{genre}_{param}")
+            update_class_settings(genre, param, new_value)
 
 # Step 3: Sample Size and Train/Test Split
 st.sidebar.subheader("Step 3: Sample Size and Train/Test Split")
@@ -108,8 +118,8 @@ if st.sidebar.button("Generate Synthetic Data"):
     Rating = []
 
     # Generate data for each genre
-    for genre, settings in class_settings.items():
-        n = int(sample_size / len(class_settings))  # Equal distribution across genres
+    for genre, settings in st.session_state.class_settings.items():
+        n = int(sample_size / len(st.session_state.class_settings))  # Equal distribution across genres
         Budget.extend(np.random.normal(settings["Budget_mean"], settings["Budget_std"], n))
         Runtime.extend(np.random.normal(settings["Runtime_mean"], settings["Runtime_std"], n))
         Release_Year.extend(np.random.normal(settings["Release_Year_mean"], settings["Release_Year_std"], n))
