@@ -6,29 +6,16 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, r2_score
 
 # Function to generate synthetic movie data
-def generate_synthetic_movie_data(features, sample_size):
+def generate_synthetic_movie_data(features, class_settings, sample_size):
     data = {feature: [] for feature in features}
-    data['Rating'] = []
+    data['Class'] = []
 
-    # Generate synthetic data
-    for _ in range(sample_size):
-        # Example: Random values for features
-        budget = np.random.randint(100000, 100000000)  # Budget in USD
-        runtime = np.random.randint(60, 240)  # Runtime in minutes
-        genre = np.random.choice(['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'])  # Genre
-        year = np.random.randint(1980, 2023)  # Release year
-        popularity = np.random.uniform(0, 100)  # Popularity score
-
-        # Simulate a movie rating (target variable)
-        rating = np.random.uniform(1, 10)  # Rating between 1 and 10
-
-        # Append to data
-        data['Budget (USD)'].append(budget)
-        data['Runtime (min)'].append(runtime)
-        data['Genre'].append(genre)
-        data['Release Year'].append(year)
-        data['Popularity'].append(popularity)
-        data['Rating'].append(rating)
+    for class_name, settings in class_settings.items():
+        for _ in range(sample_size):
+            row = [np.random.normal(settings[f'Mean for {feature}'], settings[f'Std Dev for {feature}']) for feature in features]
+            data['Class'].append(class_name)
+            for idx, feature in enumerate(features):
+                data[feature].append(row[idx])
 
     return pd.DataFrame(data)
 
@@ -40,15 +27,34 @@ st.sidebar.header("Synthetic Data Generation")
 
 # Feature Configuration
 st.sidebar.subheader("Feature Configuration")
-features = ['Budget (USD)', 'Runtime (min)', 'Genre', 'Release Year', 'Popularity']
-st.sidebar.write("Features: ", ", ".join(features))
+feature_names = st.sidebar.text_input("Enter feature names (comma-separated):", "Budget (USD), Runtime (min), Popularity")
+features = [feature.strip() for feature in feature_names.split(",")]
+
+# Class Configuration
+st.sidebar.subheader("Class Configuration")
+class_names = st.sidebar.text_input("Enter class names (comma-separated):", "Action, Comedy, Drama")
+classes = [class_name.strip() for class_name in class_names.split(",")]
+
+# Class-Specific Settings
+st.sidebar.subheader("Class-Specific Settings")
+class_settings = {}
+
+for class_name in classes:
+    with st.sidebar.expander(f"{class_name} Settings"):
+        class_config = {}
+        for feature in features:
+            mean = st.sidebar.number_input(f"Mean for {feature}", value=100.0, key=f"{class_name}_{feature}_mean")
+            std_dev = st.sidebar.number_input(f"Std Dev for {feature}", value=10.0, key=f"{class_name}_{feature}_std")
+            class_config[f"Mean for {feature}"] = mean
+            class_config[f"Std Dev for {feature}"] = std_dev
+        class_settings[class_name] = class_config
 
 # Sample Size
 sample_size = st.sidebar.number_input("Number of samples", min_value=100, max_value=100000, value=500, step=100)
 
 # Generate Data Button
 if st.sidebar.button("Generate Data"):
-    df = generate_synthetic_movie_data(features, sample_size)
+    df = generate_synthetic_movie_data(features, class_settings, sample_size)
     st.success("Synthetic data generated successfully!")
     st.write(df)
 
@@ -63,16 +69,16 @@ if 'data' in st.session_state:
     # Split data
     df = st.session_state['data']
     X = df[features]
-    y = df['Rating']
+    y = df['Class']
 
     # One-hot encode categorical features (e.g., Genre)
-    X = pd.get_dummies(X, columns=['Genre'], drop_first=True)
+    X = pd.get_dummies(X, columns=features, drop_first=True)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
     # Train Model Button
     if st.sidebar.button("Train Model"):
-        # Train a RandomForestRegressor
+        # Train a RandomForestClassifier
         model = RandomForestRegressor(n_estimators=100, random_state=42)
         model.fit(X_train, y_train)
 
@@ -98,21 +104,17 @@ if 'model' in st.session_state:
     st.subheader("Enter Movie Details for Prediction")
     budget = st.number_input("Budget (USD)", min_value=100000, max_value=100000000, value=50000000)
     runtime = st.number_input("Runtime (min)", min_value=60, max_value=240, value=120)
-    genre = st.selectbox("Genre", ['Action', 'Comedy', 'Drama', 'Sci-Fi', 'Horror'])
-    year = st.number_input("Release Year", min_value=1980, max_value=2023, value=2020)
     popularity = st.number_input("Popularity", min_value=0.0, max_value=100.0, value=50.0)
 
     # Prepare input data
     input_data = pd.DataFrame({
         'Budget (USD)': [budget],
         'Runtime (min)': [runtime],
-        'Genre': [genre],
-        'Release Year': [year],
         'Popularity': [popularity]
     })
 
     # One-hot encode categorical features
-    input_data = pd.get_dummies(input_data, columns=['Genre'], drop_first=True)
+    input_data = pd.get_dummies(input_data, columns=features, drop_first=True)
 
     # Align input data with training data columns
     for col in X_train.columns:
