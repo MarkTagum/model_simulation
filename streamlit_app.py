@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 
@@ -54,12 +54,15 @@ sample_size = st.sidebar.number_input("Number of samples", min_value=100, max_va
 
 # Generate Data Button
 if st.sidebar.button("Generate Data"):
-    df = generate_synthetic_movie_data(features, class_settings, sample_size)
-    st.success("Synthetic data generated successfully!")
-    st.write(df)
+    try:
+        df = generate_synthetic_movie_data(features, class_settings, sample_size)
+        st.success("Synthetic data generated successfully!")
+        st.write(df)
 
-    # Save data to session state
-    st.session_state['data'] = df
+        # Save data to session state
+        st.session_state['data'] = df
+    except Exception as e:
+        st.error(f"Error generating data: {e}")
 
 # Train/Test Split Configuration
 if 'data' in st.session_state:
@@ -71,29 +74,39 @@ if 'data' in st.session_state:
     X = df[features]
     y = df['Class']
 
-    # One-hot encode categorical features (e.g., Genre)
+    # One-hot encode categorical features (if any)
     X = pd.get_dummies(X, columns=features, drop_first=True)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
 
     # Train Model Button
     if st.sidebar.button("Train Model"):
-        # Train a RandomForestClassifier
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X_train, y_train)
+        try:
+            # Hyperparameter tuning with GridSearchCV
+            param_grid = {
+                'n_estimators': [50, 100, 200],
+                'max_depth': [None, 10, 20, 30],
+                'min_samples_split': [2, 5, 10],
+                'min_samples_leaf': [1, 2, 4]
+            }
+            model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, n_jobs=-1)
+            model.fit(X_train, y_train)
 
-        # Predict on test data
-        y_pred = model.predict(X_test)
+            # Predict on test data
+            y_pred = model.predict(X_test)
 
-        # Evaluate model
-        st.success("Model trained successfully!")
-        st.write("Classification Report:")
-        st.text(classification_report(y_test, y_pred))
-        st.write("Confusion Matrix:")
-        st.write(confusion_matrix(y_test, y_pred))
+            # Evaluate model
+            st.success("Model trained successfully!")
+            st.write("Best Parameters:", model.best_params_)
+            st.write("Classification Report:")
+            st.text(classification_report(y_test, y_pred))
+            st.write("Confusion Matrix:")
+            st.write(confusion_matrix(y_test, y_pred))
 
-        # Save model to session state
-        st.session_state['model'] = model
+            # Save model to session state
+            st.session_state['model'] = model
+        except Exception as e:
+            st.error(f"Error training model: {e}")
 
 # Movie Rating Prediction
 if 'model' in st.session_state:
@@ -124,6 +137,9 @@ if 'model' in st.session_state:
 
     # Predict Button
     if st.button("Predict Class"):
-        model = st.session_state['model']
-        prediction = model.predict(input_data)
-        st.success(f"Predicted Movie Class: {prediction[0]}")
+        try:
+            model = st.session_state['model']
+            prediction = model.predict(input_data)
+            st.success(f"Predicted Movie Class: {prediction[0]}")
+        except Exception as e:
+            st.error(f"Error making prediction: {e}")
