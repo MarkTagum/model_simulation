@@ -53,7 +53,17 @@ def generate_synthetic_movie_data(features, class_settings, sample_size):
             row = [np.random.normal(settings[f'Mean for {feature}'], settings[f'Std Dev for {feature}']) for feature in features]
             data['Class'].append(class_name)
             for idx, feature in enumerate(features):
-                data[feature].append(row[idx])
+                if feature == "Budget (USD)":
+                    # Round budget to two decimal places
+                    data[feature].append(round(row[idx], 2))
+                elif feature == "Runtime (min)":
+                    # Round runtime to the nearest minute
+                    data[feature].append(round(row[idx]))
+                elif feature == "Popularity":
+                    # Convert popularity to whole number
+                    data[feature].append(int(round(row[idx])))
+                else:
+                    data[feature].append(row[idx])
 
     return pd.DataFrame(data)
 
