@@ -50,7 +50,27 @@ def generate_synthetic_movie_data(features, class_settings, sample_size):
 
     for class_name, settings in class_settings.items():
         for _ in range(sample_size):
-            row = [np.random.normal(settings[f'Mean for {feature}'], settings[f'Std Dev for {feature}']) for feature in features]
+            row = []
+            for feature in features:
+                # Generate values based on constraints
+                if feature == "Release Year":
+                    # Ensure Release Year is between 1980 and 2025 and a whole number
+                    value = int(np.random.normal(settings[f'Mean for {feature}'], settings[f'Std Dev for {feature}']))
+                    value = max(1980, min(2025, value))  # Clamp to range
+                    row.append(value)
+                elif feature == "Budget (USD)":
+                    # Ensure Budget is rounded to two decimal places
+                    value = np.round(np.random.normal(settings[f'Mean for {feature}'], settings[f'Std Dev for {feature}']), 2)
+                    row.append(value)
+                elif feature == "Runtime (min)":
+                    # Ensure Runtime is in minutes and seconds (e.g., 120.5 for 120 minutes and 30 seconds)
+                    value = np.round(np.random.normal(settings[f'Mean for {feature}'], settings[f'Std Dev for {feature}']), 1)
+                    row.append(value)
+                else:
+                    # For other features, generate normally distributed values
+                    value = np.random.normal(settings[f'Mean for {feature}'], settings[f'Std Dev for {feature}'])
+                    row.append(value)
+
             data['Class'].append(class_name)
             for idx, feature in enumerate(features):
                 data[feature].append(row[idx])
