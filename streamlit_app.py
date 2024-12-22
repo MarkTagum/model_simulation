@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt  # For EDA visualizations
 import plotly.graph_objects as go  # For enhanced table display
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.metrics import classification_report, accuracy_score
 from imblearn.over_sampling import SMOTE  # For handling class imbalance
 
@@ -145,8 +145,8 @@ if st.sidebar.button("Generate Data & Train Model"):
         smote = SMOTE(random_state=42)
         X_resampled, y_resampled = smote.fit_resample(X, y_encoded)
 
-        # Scale the data using StandardScaler
-        scaler = StandardScaler()
+        # Scale the data using MinMaxScaler to range [0, 1]
+        scaler = MinMaxScaler()
         X_resampled_scaled = scaler.fit_transform(X_resampled)
         X_train, X_test, y_train, y_test = train_test_split(X_resampled_scaled, y_resampled, test_size=0.2, random_state=42)
 
@@ -229,31 +229,3 @@ if st.sidebar.button("Generate Data & Train Model"):
 
     except Exception as e:
         st.error(f"Error: {e}")
-
-# Section to load and display original data
-st.sidebar.header("Load Original Data")
-uploaded_file = st.sidebar.file_uploader("Upload your original data (CSV)", type=["csv"])
-
-if uploaded_file is not None:
-    # Load the original data
-    original_data = pd.read_csv(uploaded_file)
-    st.write("### Original Data:")
-    st.write(original_data.head())
-
-    # Preprocess original data
-    X_original = original_data[features]
-    y_original = original_data['Class']
-
-    # Scale the original data using the saved scaler
-    X_original_scaled = st.session_state['scaler'].transform(X_original)
-
-    # Convert scaled data to DataFrame for display
-    scaled_data_df = pd.DataFrame(X_original_scaled, columns=features)
-    scaled_data_df['Class'] = y_original  # Add the target column back
-
-    # Display original and scaled data side by side
-    st.write("### Original vs Scaled Data")
-    st.write("#### Original Data:")
-    st.write(original_data[features + ['Class']].head())
-    st.write("#### Scaled Data:")
-    st.write(scaled_data_df.head())
