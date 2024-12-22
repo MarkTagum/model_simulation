@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, accuracy_score
+from imblearn.over_sampling import SMOTE  # For handling class imbalance
 
 # Add custom CSS for better styling
 st.markdown("""
@@ -119,16 +120,20 @@ if st.sidebar.button("Generate Data & Train Model"):
         label_encoder = LabelEncoder()
         y_encoded = label_encoder.fit_transform(y)
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+        # Handle class imbalance using SMOTE
+        smote = SMOTE(random_state=42)
+        X_resampled, y_resampled = smote.fit_resample(X, y_encoded)
+
+        X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
 
         # Hyperparameter tuning with GridSearchCV
         param_grid = {
-            'n_estimators': [50, 100, 200],
+            'n_estimators': [100, 200, 300],
             'max_depth': [None, 10, 20, 30],
             'min_samples_split': [2, 5, 10],
             'min_samples_leaf': [1, 2, 4]
         }
-        model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, n_jobs=-1)
+        model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=5, n_jobs=-1)
         model.fit(X_train, y_train)
 
         # Predict on test data
@@ -161,7 +166,6 @@ if st.sidebar.button("Generate Data & Train Model"):
         # Save model and label encoder to session state
         st.session_state['model'] = model
         st.session_state['label_encoder'] = label_encoder
-
 
         # Display histograms for each feature
         st.write("### Feature Distribution")
