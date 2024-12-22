@@ -65,7 +65,7 @@ st.sidebar.header("Synthetic Data Generation")
 
 # Feature Configuration
 st.sidebar.subheader("Feature Configuration")
-feature_names = st.sidebar.text_input("Enter feature names (comma-separated):", "Budget (USD), Runtime (min), Popularity")
+feature_names = st.sidebar.text_input("Enter feature names (comma-separated):", "Budget (USD), Runtime (min), Movie_Rating")
 features = [feature.strip() for feature in feature_names.split(",")]
 
 # Class Configuration
@@ -113,7 +113,7 @@ if st.sidebar.button("Generate Data & Train Model"):
 
         # Train the model right after generating data
         # Split data
-        X = df[features]
+        X = df[features]  # Use only relevant features
         y = df['Class']
 
         # Encode class labels
