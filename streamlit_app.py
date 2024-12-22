@@ -1,13 +1,46 @@
-import streamlit as st # type: ignore
+import streamlit as st  # type: ignore
 import pandas as pd
 import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt 
-import plotly.graph_objects as go
+import seaborn as sns  # For EDA visualizations
+import matplotlib.pyplot as plt  # For EDA visualizations
+import plotly.graph_objects as go  # For enhanced table display
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, accuracy_score
 from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report, accuracy_score
+
+# Add custom CSS for better styling
+st.markdown("""
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+        }
+        .title {
+            font-size: 36px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .subheader {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .container {
+            padding: 20px;
+        }
+        .sidebar .sidebar-content {
+            padding: 20px;
+        }
+        .streamlit-expanderHeader {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007ACC;
+        }
+        .streamlit-expander {
+            margin-top: 10px;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Function to generate synthetic movie data
 def generate_synthetic_movie_data(features, class_settings, sample_size):
@@ -24,7 +57,7 @@ def generate_synthetic_movie_data(features, class_settings, sample_size):
     return pd.DataFrame(data)
 
 # Streamlit App
-st.title("Movie Rating Prediction")
+st.title("Synthetic Movie Data Generator and Classifier", anchor="title")
 
 # Sidebar for Data Generation Parameters
 st.sidebar.header("Synthetic Data Generation")
@@ -47,8 +80,8 @@ for class_name in classes:
     with st.sidebar.expander(f"{class_name} Settings"):
         class_config = {}
         for feature in features:
-            mean = st.sidebar.number_input(f"Mean for {feature}", value=100.0, key=f"{class_name}_{feature}_mean")
-            std_dev = st.sidebar.number_input(f"Std Dev for {feature}", value=10.0, key=f"{class_name}_{feature}_std")
+            mean = st.number_input(f"Mean for {feature} ({class_name})", value=100.0, key=f"{class_name}_{feature}_mean")
+            std_dev = st.number_input(f"Std Dev for {feature} ({class_name})", value=10.0, key=f"{class_name}_{feature}_std")
             class_config[f"Mean for {feature}"] = mean
             class_config[f"Std Dev for {feature}"] = std_dev
         class_settings[class_name] = class_config
@@ -56,94 +89,114 @@ for class_name in classes:
 # Sample Size
 sample_size = st.sidebar.number_input("Number of samples", min_value=100, max_value=100000, value=500, step=100)
 
-# Generate Data Button
-if st.sidebar.button("Generate Data"):
+# Generate Data and Train Model Button
+if st.sidebar.button("Generate Data & Train Model"):
     try:
+        # Generate the synthetic data
         df = generate_synthetic_movie_data(features, class_settings, sample_size)
+        st.session_state['data'] = df  # Store the data in session_state
         st.success("Synthetic data generated successfully!")
-        st.write(df)
+
+        # Display the synthetic data generated
+        st.write("### Sample of Generated Data:")
+        st.write(df.head())
 
         # Save data to session state
-        st.session_state['data'] = df
+        csv = df.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="Download Synthetic Data as CSV",
+            data=csv,
+            file_name="synthetic_movie_data.csv",
+            mime="text/csv"
+        )
+
+        # Train the model right after generating data
+        # Split data
+        X = df[features]
+        y = df['Class']
+
+        # Encode class labels
+        label_encoder = LabelEncoder()
+        y_encoded = label_encoder.fit_transform(y)
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
+
+        # Hyperparameter tuning with GridSearchCV
+        param_grid = {
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10],
+            'min_samples_leaf': [1, 2, 4]
+        }
+        model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, n_jobs=-1)
+        model.fit(X_train, y_train)
+
+        # Predict on test data
+        y_pred = model.predict(X_test)
+
+        # Evaluate model
+        accuracy = accuracy_score(y_test, y_pred)
+        classification_rep = classification_report(y_test, y_pred, target_names=label_encoder.classes_, output_dict=True)
+
+        st.subheader("Best Model Performance")
+        st.write(f"**Best Model:** RandomForestClassifier")
+        st.write(f"**Accuracy:** {accuracy:.4f}")
+
+        # Convert classification report to a DataFrame
+        report_df = pd.DataFrame(classification_rep).transpose()
+
+        # Display the classification report
+        st.write("### Classification Report (Best Model):")
+        st.dataframe(report_df)
+
+        # Optional: Use Plotly for an enhanced table
+        fig = go.Figure(
+            data=[go.Table(
+                header=dict(values=list(report_df.columns), fill_color="paleturquoise", align="left"),
+                cells=dict(values=[report_df[col] for col in report_df.columns], fill_color="lavender", align="left")
+            )]
+        )
+        st.plotly_chart(fig)
+
+        # Save model and label encoder to session state
+        st.session_state['model'] = model
+        st.session_state['label_encoder'] = label_encoder
+
+
+        # Display histograms for each feature
+        st.write("### Feature Distribution")
+        for feature in features:
+            plt.figure(figsize=(8, 4))
+            sns.histplot(df[feature], kde=True, color="teal")
+            plt.title(f"Distribution of {feature}", fontsize=18)
+            st.pyplot(plt)
+
+        # Class distribution
+        st.write("### Class Distribution")
+        plt.figure(figsize=(6, 4))
+        sns.countplot(x='Class', data=df, palette='Set2')
+        plt.title("Class Distribution", fontsize=18)
+        st.pyplot(plt)
+
+        # Correlation matrix heatmap using Plotly for interactivity
+        st.write("### Correlation Matrix")
+        corr_matrix = df[features].corr()
+        fig = go.Figure(data=go.Heatmap(
+            z=corr_matrix.values,
+            x=corr_matrix.columns,
+            y=corr_matrix.columns,
+            colorscale='Viridis',
+            colorbar=dict(title='Correlation')
+        ))
+        st.plotly_chart(fig)
+
+        # Boxplots by class
+        st.write("### Boxplots by Class")
+        for feature in features:
+            plt.figure(figsize=(8, 4))
+            sns.boxplot(x='Class', y=feature, data=df, palette='Set2')
+            plt.title(f"Boxplot of {feature} by Class", fontsize=18)
+            st.pyplot(plt)
+
     except Exception as e:
-        st.error(f"Error generating data: {e}")
-
-# Train/Test Split Configuration
-if 'data' in st.session_state:
-    st.sidebar.subheader("Train/Test Split Configuration")
-    test_size = st.sidebar.slider("Test Size", min_value=0.1, max_value=0.9, value=0.2, step=0.1)
-
-    # Split data
-    df = st.session_state['data']
-    X = df[features]
-    y = df['Class']
-
-    # One-hot encode categorical features (if any)
-    X = pd.get_dummies(X, columns=features, drop_first=True)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=42)
-
-    # Train Model Button
-    if st.sidebar.button("Train Model"):
-        try:
-            # Hyperparameter tuning with GridSearchCV
-            param_grid = {
-                'n_estimators': [50, 100, 200],
-                'max_depth': [None, 10, 20, 30],
-                'min_samples_split': [2, 5, 10],
-                'min_samples_leaf': [1, 2, 4]
-            }
-            model = GridSearchCV(RandomForestClassifier(random_state=42), param_grid, cv=3, n_jobs=-1)
-            model.fit(X_train, y_train)
-
-            # Predict on test data
-            y_pred = model.predict(X_test)
-
-            # Evaluate model
-            st.success("Model trained successfully!")
-            st.write("Best Parameters:", model.best_params_)
-            st.write("Classification Report:")
-            st.text(classification_report(y_test, y_pred))
-            st.write("Confusion Matrix:")
-            st.write(confusion_matrix(y_test, y_pred))
-
-            # Save model to session state
-            st.session_state['model'] = model
-        except Exception as e:
-            st.error(f"Error training model: {e}")
-
-# Movie Rating Prediction
-if 'model' in st.session_state:
-    st.header("Movie Rating Prediction")
-
-    # Input features for prediction
-    st.subheader("Enter Movie Details for Prediction")
-    budget = st.number_input("Budget (USD)", min_value=100000, max_value=100000000, value=50000000)
-    runtime = st.number_input("Runtime (min)", min_value=60, max_value=240, value=120)
-    popularity = st.number_input("Popularity", min_value=0.0, max_value=100.0, value=50.0)
-
-    # Prepare input data
-    input_data = pd.DataFrame({
-        'Budget (USD)': [budget],
-        'Runtime (min)': [runtime],
-        'Popularity': [popularity]
-    })
-
-    # One-hot encode categorical features
-    input_data = pd.get_dummies(input_data, columns=features, drop_first=True)
-
-    # Align input data with training data columns
-    for col in X_train.columns:
-        if col not in input_data.columns:
-            input_data[col] = 0
-
-    input_data = input_data[X_train.columns]
-
-    # Predict Button
-    if st.button("Predict Class"):
-        try:
-            model = st.session_state['model']
-            prediction = model.predict(input_data)
-            st.success(f"Predicted Movie Class: {prediction[0]}")
-        except Exception as e:
-            st.error(f"Error making prediction: {e}")
+        st.error(f"Error: {e}")
