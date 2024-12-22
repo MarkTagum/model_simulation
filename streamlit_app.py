@@ -1,3 +1,13 @@
+import streamlit as st # type: ignore
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt 
+import plotly.graph_objects as go
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.preprocessing import LabelEncoder
 
 # Function to generate synthetic movie data
 def generate_synthetic_movie_data(features, class_settings, sample_size):
