@@ -209,3 +209,31 @@ if st.sidebar.button("Generate Data & Train Model"):
 
     except Exception as e:
         st.error(f"Error: {e}")
+
+# Section to load and display original data
+st.sidebar.header("Load Original Data")
+uploaded_file = st.sidebar.file_uploader("Upload your original data (CSV)", type=["csv"])
+
+if uploaded_file is not None:
+    # Load the original data
+    original_data = pd.read_csv(uploaded_file)
+    st.write("### Original Data:")
+    st.write(original_data.head())
+
+    # Preprocess original data
+    X_original = original_data[features]
+    y_original = original_data['Class']
+
+    # Scale the original data using the saved scaler
+    X_original_scaled = st.session_state['scaler'].transform(X_original)
+
+    # Convert scaled data to DataFrame for display
+    scaled_data_df = pd.DataFrame(X_original_scaled, columns=features)
+    scaled_data_df['Class'] = y_original  # Add the target column back
+
+    # Display original and scaled data side by side
+    st.write("### Original vs Scaled Data")
+    st.write("#### Original Data:")
+    st.write(original_data[features + ['Class']].head())
+    st.write("#### Scaled Data:")
+    st.write(scaled_data_df.head())
