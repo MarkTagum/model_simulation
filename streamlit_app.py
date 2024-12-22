@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt  # For EDA visualizations
 import plotly.graph_objects as go  # For enhanced table display
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.metrics import classification_report, accuracy_score
 from imblearn.over_sampling import SMOTE  # For handling class imbalance
 
@@ -65,7 +65,8 @@ st.sidebar.header("Synthetic Data Generation")
 
 # Feature Configuration
 st.sidebar.subheader("Feature Configuration")
-feature_names = st.sidebar.text_input("Enter feature names (comma-separated):", "Budget (USD), Runtime (min), Movie_Rating")
+# Updated features: Release Year, IMDb Score, Runtime (min), Budget (USD)
+feature_names = st.sidebar.text_input("Enter feature names (comma-separated):", "Release Year, IMDb Score, Runtime (min), Budget (USD)")
 features = [feature.strip() for feature in feature_names.split(",")]
 
 # Class Configuration
@@ -124,7 +125,10 @@ if st.sidebar.button("Generate Data & Train Model"):
         smote = SMOTE(random_state=42)
         X_resampled, y_resampled = smote.fit_resample(X, y_encoded)
 
-        X_train, X_test, y_train, y_test = train_test_split(X_resampled, y_resampled, test_size=0.2, random_state=42)
+        # Scale the data using StandardScaler
+        scaler = StandardScaler()
+        X_resampled_scaled = scaler.fit_transform(X_resampled)
+        X_train, X_test, y_train, y_test = train_test_split(X_resampled_scaled, y_resampled, test_size=0.2, random_state=42)
 
         # Hyperparameter tuning with GridSearchCV
         param_grid = {
@@ -166,6 +170,7 @@ if st.sidebar.button("Generate Data & Train Model"):
         # Save model and label encoder to session state
         st.session_state['model'] = model
         st.session_state['label_encoder'] = label_encoder
+        st.session_state['scaler'] = scaler  # Save the scaler for future use
 
         # Display histograms for each feature
         st.write("### Feature Distribution")
